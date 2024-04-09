@@ -1,0 +1,237 @@
+// CMSC 341 - Spring 2021 - Project 4
+// hash.cpp
+// The impleme ntation of the class HashTable
+#include "hash.h"
+#include "math.h"
+HashTable::HashTable(unsigned size, hash_fn hash){
+
+  if(size  < MINPRIME){
+    m_capacity = MINPRIME;
+  }
+  else if (size > MAXPRIME){
+    m_capacity = MAXPRIME;
+  }
+  else{
+    if(isPrime(size) == true){
+      m_capacity = size;
+    }
+    else{
+      m_capacity = findNextPrime(size);
+    }
+  }
+
+  m_table= new Person[m_capacity];
+  int i = 0;
+  for(i = 0; i < m_capacity; i++){
+    m_table[i] = EMPTY;
+  }
+
+  m_size = 0;
+  m_numDeleted = 0;
+  m_hash = hash;
+  m_currentProb = LINEAR;
+
+}
+
+HashTable::~HashTable(){
+
+    m_capacity = 0;
+    m_size = 0;    
+    m_numDeleted = 0;
+    m_hash = nullptr;
+    delete []m_table;       
+
+}
+
+bool HashTable::insert(Person person){
+  int a = 0;
+  for(a = 0; a < m_capacity; a++){
+  
+    if(person.serial() == m_table[a].serial()){
+      return false;
+    }
+  }
+  
+  int number = m_hash(person.key())% m_capacity;
+
+  if(m_table[number].key() == ""){
+    m_table[number] = person;
+  }
+  
+  else{
+    bool inputted = false;
+    int i = 0;
+    if(m_currentProb == LINEAR){ 
+    while(inputted != true){
+     
+      int index = (m_hash(person.key()) + i) % m_capacity;
+      if(m_table[index].key() == ""){
+	m_table[index] = person;
+	inputted = true;
+      }
+      i++;
+
+    }
+    }
+    else{
+      while(inputted != true){
+
+	int index = ((m_hash(person.key()) % m_capacity) + (i * i)) % m_capacity;
+	if(m_table[index].key() == ""){
+	  m_table[index] = person;
+	  inputted = true;
+	}
+	i++;
+	
+      }
+    }
+
+  }
+
+  m_size ++;
+
+  if(lambda() > .5){
+    if(m_currentProb == LINEAR){
+      setProbingPolicy(QUADRATIC);
+    }
+    else{
+      setProbingPolicy(LINEAR);
+    }
+  }
+
+  return true;
+}
+
+bool HashTable::remove(Person person){
+  int i = 0;
+ 
+  int index  = m_hash(person.key())% m_capacity;
+  if(m_table[index].key() == person.key()){
+    m_table[index] = DELETED;
+    m_numDeleted ++;
+ 
+  
+  if(deletedRatio() > .25){
+    if(m_currentProb == LINEAR){
+      setProbingPolicy(QUADRATIC);
+    }
+    
+    else{
+      setProbingPolicy(LINEAR);
+	}
+    
+  }    
+  
+
+  return true;
+  }
+  else{
+  
+    int i = 0;
+    if(m_currentProb == LINEAR){
+    while(i <m_capacity){
+
+      int index = (m_hash(person.key()) + i) % m_capacity;
+      if(m_table[index].key() == person.key()){
+	m_table[index] = DELETED;
+	m_numDeleted ++;
+
+        inputted = true;
+
+      }
+      i++;
+
+    }
+    }
+    else{
+      while(inputted != true  i <m_capacity){
+
+        int index = ((m_hash(person.key()) % m_capacity) + (i * i)) % m_capacity;
+        if(m_table[index].key() ==  person.key()){
+	  m_table[index] = DELETED;
+	  m_numDeleted ++;
+
+
+          inputted = true;
+        }
+        i++;
+
+      }
+    }
+
+
+  }
+}
+
+void HashTable::setProbingPolicy(probing prob){
+  m_currentProb = prob;
+
+  m_size  = m_size - m_numDeleted;
+
+  int newcapacity = findNextPrime(m_size*4);
+  Person *new_table = m_table;
+
+
+  int temp = m_capacity;
+  m_capacity = newcapacity;
+
+  m_table= new Person[m_capacity];
+  
+ 
+  m_size = 0;
+  int a = 0;
+  for(a = 0; a < temp ; a++){
+    if(new_table[a].key() != DELETEDKEY){
+      insert(new_table[a]);
+    }
+    
+  }
+  delete []new_table;
+  m_numDeleted = 0;
+}
+
+float HashTable::lambda() const {
+
+
+  return float(m_size)/float(m_capacity);
+}
+
+float HashTable::deletedRatio() const {
+  return float(m_numDeleted)/float(m_size);
+}
+
+void HashTable::dump() const {
+  for (int i = 0; i < m_capacity; i++) {
+    cout << "[" << i << "] : " << m_table[i] << endl;
+  }
+}
+
+bool HashTable::isPrime(int number){
+    // If number is prime this function returns true
+    // otherwise it returns false
+    bool result = true;
+    for (int i = 2; i <= number / 2; ++i) {
+        if (number % i == 0) {
+            result = false;
+            break;
+        }
+    }
+    return result;
+}
+
+int HashTable::findNextPrime(int current){
+    //we won't go beyond MAXPRIME
+    //the smallest prime would be next after MINPRIME
+    if (current < MINPRIME) current = MINPRIME;
+    for (int i=current; i<MAXPRIME; i++) { 
+        for (int j=2; j*j<=i; j++) {
+            if (i % j == 0) 
+                break;
+            else if (j+1 > sqrt(i) && i != current) {
+                return i;
+            }
+        }
+    }
+    //if a user tries to go over MAXPRIME
+    return MAXPRIME;
+}
