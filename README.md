@@ -1,2 +1,3 @@
 # Person-and-hash-test
-A test about hash and people
+
+This program is a test of a hash table and see what if the program is able to deal with adding person objects to the code and 
